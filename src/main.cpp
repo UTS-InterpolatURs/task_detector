@@ -35,15 +35,23 @@ void imageCallback(const sensor_msgs::ImageConstPtr &message) {
         cv::rectangle(image, detections.at(i), cv::Scalar(255,255,255));
     }
 
-    sensor_msgs::Image output = converter.convertCVImageToMessage(image);
+    // cv::Mat image = cv::imread("/home/jon/development/haar/empty_ethernet/info/out1.png");
+
+    // ROS_INFO_STREAM("Hello World" << image.empty());
+
+    // cv::Rect rect(cv::Point2i(1046, 363), cv::Size(79, 70));
+
+    // cv::rectangle(image, rect, cv::Scalar(255,0,0));
+
+    sensor_msgs::Image output = converter.convertCVImageToMessage(image, message->encoding);
     imagePub.publish(output);
 }
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "edge_detector");
+    ros::init(argc, argv, "task_detector");
     ros::NodeHandle n;
 
-    if(!classifier.load("/home/jon/development/haar/filled_ethernet/data/cascade.xml")) {
+    if(!classifier.load("/home/jon/development/haar/empty_ethernet/data/cascade.xml")) {
         ROS_ERROR("Error loading classifier");
         return -1;
     }
