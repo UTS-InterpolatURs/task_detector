@@ -19,7 +19,7 @@ namespace Spatial {
 
 		point.x = (z * (imageX - info.K[2]) / info.K[0]) / 1000;
 		point.y = (z * (imageY - info.K[5]) / info.K[4]) / 1000;
-		point.z = z / 1000;
+		point.z = static_cast<float>(z) / 1000;
 
         return point;
     }
