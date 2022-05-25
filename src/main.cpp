@@ -67,7 +67,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr depthMessage, const sensor_m
     cv::Point centerPoint = feature.centerPoint.getImageCoordinates();
     cv::circle(colorImage, cv::Point(centerPoint.x, centerPoint.y), 10, cv::Scalar(255,0,255));
 
-    // ROS_INFO_STREAM("X: " << feature.centerPoint.x << " Y: " << feature.centerPoint.y << " Z: " << feature.centerPoint.z);
+    geometry_msgs::Point32 globalPoint = feature.centerPoint.getGlobalCoordinates();
+
+    ROS_INFO_STREAM("GX: " << globalPoint.x << " GY: " << globalPoint.y << " GZ: " << globalPoint.z);
 
     sensor_msgs::Image output = converter.convertCVImageToMessage(colorImage, colorMessage->encoding);
     imagePub.publish(output);
