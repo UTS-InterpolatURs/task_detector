@@ -42,6 +42,9 @@ install(
 add_executable(${PROJECT_NAME}
   src/main.cpp
   src/image/ImageConverter.cpp
+  src/classifier/Classifier.cpp
+  src/classifier/TaskFinder.cpp
+  src/coordinate/Coordinate.cpp
 )
 
 target_link_libraries(
