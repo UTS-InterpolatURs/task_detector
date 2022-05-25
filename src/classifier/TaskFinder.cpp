@@ -34,7 +34,7 @@ namespace Classification {
         ushort lowest = depthImage.at<ushort>(0,0);
         ushort pixelDepth = depthImage.at<ushort>(point.y, point.x);
 
-        Spatial::Coordinate coord(point.x, point.y, lowest-pixelDepth, info);
+        Spatial::Coordinate coord(point.x, point.y, pixelDepth, info);
 
         Feature feature;
         feature.centerPoint = coord;
