@@ -23,38 +23,26 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
 
+#include "task_detector/GetFeature.h"
+
 #include "image/ImageConverter.h"
 #include "classifier/TaskFinder.h"
+
+#define POINT_COUNT_GOAL 15
 
 Image::ImageConverter converter;
 image_transport::Publisher imagePub;
 
 Classification::TaskFinder finder;
 
-// void imageCallback(const sensor_msgs::ImageConstPtr &message) {
-//     cv::Mat image = converter.convertMessageToCVImage(message, message->encoding);
-
-//     std::vector<cv::Rect> detections;
-//     classifier.detectMultiScale(image, detections);
-
-//     for(size_t i = 0; i < detections.size(); i++) {
-//         // cv::Point center(detections[i].x + detections[i].width)
-//         cv::rectangle(image, detections.at(i), cv::Scalar(255,255,255));
-//     }
-
-//     // cv::Mat image = cv::imread("/home/jon/development/haar/empty_ethernet/info/out1.png");
-
-//     // ROS_INFO_STREAM("Hello World" << image.empty());
-
-//     // cv::Rect rect(cv::Point2i(1046, 363), cv::Size(79, 70));
-
-//     // cv::rectangle(image, rect, cv::Scalar(255,0,0));
-
-//     sensor_msgs::Image output = converter.convertCVImageToMessage(image, message->encoding);
-//     imagePub.publish(output);
-// }
+std::vector<Spatial::Coordinate> points;
 
 void imageCallback(const sensor_msgs::ImageConstPtr depthMessage, const sensor_msgs::ImageConstPtr colorMessage, const sensor_msgs::CameraInfoConstPtr info) {
+
+    if(points.size() > POINT_COUNT_GOAL) {
+        ROS_INFO("hello world");
+        points.clear();
+    }
 
     cv::Mat colorImage = converter.convertMessageToCVImage(colorMessage, colorMessage->encoding);
     cv::Mat depthImage = converter.convertMessageToCVImage(depthMessage, depthMessage->encoding);
@@ -67,12 +55,44 @@ void imageCallback(const sensor_msgs::ImageConstPtr depthMessage, const sensor_m
     cv::Point centerPoint = feature.centerPoint.getImageCoordinates();
     cv::circle(colorImage, cv::Point(centerPoint.x, centerPoint.y), 10, cv::Scalar(255,0,255));
 
-    geometry_msgs::Point32 globalPoint = feature.centerPoint.getGlobalCoordinates();
+    Spatial::Coordinate coord = feature.centerPoint;
+    points.push_back(coord);
+
+    geometry_msgs::Point32 globalPoint = coord.getGlobalCoordinates();
 
     ROS_INFO_STREAM("GX: " << globalPoint.x << " GY: " << globalPoint.y << " GZ: " << globalPoint.z);
 
-    sensor_msgs::Image output = converter.convertCVImageToMessage(colorImage, colorMessage->encoding);
-    imagePub.publish(output);
+    // sensor_msgs::Image output = converter.convertCVImageToMessage(colorImage, colorMessage->encoding);
+    // imagePub.publish(output);
+}
+
+bool getFeature(task_detector::GetFeature::Request &request, task_detector::GetFeature::Response &response) {
+    while(points.size() < POINT_COUNT_GOAL-1) {
+        ROS_INFO("Waiting for desired number of images");
+    }
+
+    ROS_INFO("Reached goal");
+
+    geometry_msgs::Point32 averagedPoint;
+
+    float xSum = 0, ySum = 0, zSum = 0;
+
+    for(auto coord : points) {
+        geometry_msgs::Point32 global = coord.getGlobalCoordinates();
+        xSum += global.x;
+        ySum += global.y;
+        zSum += global.z;
+    }
+
+    averagedPoint.x = xSum / points.size();
+    averagedPoint.y = ySum / points.size();
+    averagedPoint.z = zSum / points.size();
+
+    std::vector<geometry_msgs::Point32> featurePoints;
+    featurePoints.push_back(averagedPoint);
+
+    response.points = featurePoints;
+    return true;
 }
 
 int main(int argc, char **argv) {
@@ -93,5 +113,12 @@ int main(int argc, char **argv) {
     message_filters::Synchronizer<ImageSyncPolicy> sync(ImageSyncPolicy(10), depthSub, imageSub, infoSub);
     sync.registerCallback(boost::bind(&imageCallback, _1, _2, _3));
 
-    ros::spin();
+    ros::ServiceServer service = n.advertiseService("get_features", getFeature);
+
+    // ros::spin();8888
+
+    ros::AsyncSpinner asyncSpinner(8);
+    asyncSpinner.start();
+
+    ros::waitForShutdown();
 }
