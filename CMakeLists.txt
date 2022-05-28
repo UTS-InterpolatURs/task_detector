@@ -52,6 +52,7 @@ add_executable(${PROJECT_NAME}
   src/classifier/Classifier.cpp
   src/classifier/TaskFinder.cpp
   src/coordinate/Coordinate.cpp
+  src/utils/CoordinateSmoother.cpp
 )
 
 target_link_libraries(

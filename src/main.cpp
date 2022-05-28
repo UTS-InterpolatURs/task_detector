@@ -27,6 +27,7 @@
 
 #include "image/ImageConverter.h"
 #include "classifier/TaskFinder.h"
+#include "utils/CoordinateSmoother.h"
 
 #define POINT_COUNT_GOAL 15
 
@@ -37,12 +38,9 @@ Classification::TaskFinder finder;
 
 std::vector<Spatial::Coordinate> points;
 
-void imageCallback(const sensor_msgs::ImageConstPtr depthMessage, const sensor_msgs::ImageConstPtr colorMessage, const sensor_msgs::CameraInfoConstPtr info) {
+ros::Publisher pointsPub;
 
-    if(points.size() > POINT_COUNT_GOAL) {
-        ROS_INFO("hello world");
-        points.clear();
-    }
+void imageCallback(const sensor_msgs::ImageConstPtr depthMessage, const sensor_msgs::ImageConstPtr colorMessage, const sensor_msgs::CameraInfoConstPtr info) {
 
     cv::Mat colorImage = converter.convertMessageToCVImage(colorMessage, colorMessage->encoding);
     cv::Mat depthImage = converter.convertMessageToCVImage(depthMessage, depthMessage->encoding);
@@ -62,8 +60,17 @@ void imageCallback(const sensor_msgs::ImageConstPtr depthMessage, const sensor_m
 
     ROS_INFO_STREAM("GX: " << globalPoint.x << " GY: " << globalPoint.y << " GZ: " << globalPoint.z);
 
-    // sensor_msgs::Image output = converter.convertCVImageToMessage(colorImage, colorMessage->encoding);
-    // imagePub.publish(output);
+    if(points.size() >= POINT_COUNT_GOAL - 1) {
+        Utils::CoordinateSmoother smoother;
+        // std::vector<geometry_msgs::Point32> featurePoints;
+        // featurePoints.push_back(smoother.getSmoothedGlobalCoordinate(points));
+        // geometry_msgs::Point32 smoothedPoints[1] = {smoother.getSmoothedGlobalCoordinate(points)};
+        pointsPub.publish(smoother.getSmoothedGlobalCoordinate(points));
+        points.clear();
+    }
+
+    sensor_msgs::Image output = converter.convertCVImageToMessage(colorImage, colorMessage->encoding);
+    imagePub.publish(output);
 }
 
 bool getFeature(task_detector::GetFeature::Request &request, task_detector::GetFeature::Response &response) {
@@ -73,23 +80,10 @@ bool getFeature(task_detector::GetFeature::Request &request, task_detector::GetF
 
     ROS_INFO("Reached goal");
 
-    geometry_msgs::Point32 averagedPoint;
-
-    float xSum = 0, ySum = 0, zSum = 0;
-
-    for(auto coord : points) {
-        geometry_msgs::Point32 global = coord.getGlobalCoordinates();
-        xSum += global.x;
-        ySum += global.y;
-        zSum += global.z;
-    }
-
-    averagedPoint.x = xSum / points.size();
-    averagedPoint.y = ySum / points.size();
-    averagedPoint.z = zSum / points.size();
+    Utils::CoordinateSmoother smoother;
 
     std::vector<geometry_msgs::Point32> featurePoints;
-    featurePoints.push_back(averagedPoint);
+    featurePoints.push_back(smoother.getSmoothedGlobalCoordinate(points));
 
     response.points = featurePoints;
     return true;
@@ -99,6 +93,8 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "task_detector");
     ros::NodeHandle n;
 
+    pointsPub = n.advertise<geometry_msgs::Point32>("/task_detect/detected_points", 1);
+    
     image_transport::ImageTransport transport(n);
     // image_transport::Subscriber imageSub = transport.subscribe("/camera/color/image_raw", 1, &imageCallback);
     imagePub = transport.advertise("task_detect/output_video", 10);
