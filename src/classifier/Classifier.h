@@ -18,12 +18,17 @@
 namespace Classification {
     class Classifier {
         public:
+            // Empty constructor
             Classifier();
+
+            // Constructor where the classifier model path is specified (i.e. cascade.xml)
             Classifier(std::string path);
 
+            // Classifies the objects in the image for the current classifier (e.g. keyhole)
             std::vector<cv::Rect> classify(cv::Mat image);
 
         private:
+            // Stores the cascade classifier object
             cv::CascadeClassifier classifier;
 
     };

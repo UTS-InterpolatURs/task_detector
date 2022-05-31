@@ -14,13 +14,22 @@
 namespace Spatial {
     class Coordinate {
         public:
+            // Defines an empty coordinate constructor
             Coordinate();
+
+            // Defines a coordinate constructor that will be build out the coordinate class
             Coordinate(int imageX, int imageY, int z, const sensor_msgs::CameraInfo info);
 
+            // Converts the image coordinates into coordinates that can be used by the robot manipulator code (i.e. camera frame coordinates)
             geometry_msgs::Point32 getGlobalCoordinates();
+            
+            // Gets the image coordinates
             cv::Point getImageCoordinates();
         private:
+            // Stores image coordinates and depth
             int imageX, imageY, z;
+
+            // Stores camera info at the time the coordinate was created (used for conversion)
             sensor_msgs::CameraInfo info;
     };
 };
